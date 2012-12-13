@@ -88,19 +88,32 @@ class OsHelperFactory():
     def get_os_helper():
         if platform.system()=='Darwin':
             return MacHelper()
+
+        if platform.system()=='Linux':
+            return LinuxOsHelper()
         else:
             raise Exception("Sorry, your os not implemented yet")
 
 class BaseOsHelper(object):
+
     #блокируем компьютер
-    @staticmethod
     def lock(self):
         raise NotImplementedError()
 
     #проверяем, авторизован ли пользователь
-    @staticmethod
     def is_logged(self):
         raise NotImplementedError()
+
+class LinuxOsHelper(BaseOsHelper) :
+
+    #блокируем компьютер
+    def lock(self):
+        os.system('/usr/bin/gnome-screensaver-command -l')
+
+    #проверяем, авторизован ли пользователь
+    def is_logged(self):
+        response = commands.getstatusoutput("ps ax | grep -v grep | grep gnome-screensaver | awk '{ print $1; }'")
+        return True
 
 class MacHelper(BaseOsHelper):
     def lock(self):
