@@ -1,16 +1,21 @@
 #-*- coding: UTF-8 -*-
 import sys
-import os
 import cv
 import time
-import commands
-import platform
+
+from OsHelpers import OsHelper
+from consts import *
 
 #обертка для opencv, отвечает за распознавание человека, сидящего за монитором
 class Detector():
     _storage = None
     _modify_time = False
     _capture = None
+
+    _oOutput = None
+
+    def __init__(self):
+        self._oOutput = DebugOutput("Camera")
 
 
     #производим последовательный поиск любого из элементов: глаз, лица, плеч и головы
@@ -25,7 +30,7 @@ class Detector():
                 cv.Rectangle(grayscale,(face[0][0],face[0][1]),
                     (face[0][0]+face[0][2],face[0][1]+face[0][3]),
                     cv.RGB(155, 55, 200),2)
-                #cv.ShowImage("Camera", grayscale)
+                self._oOutput.showCam(grayscale)
             return True
 
         else:
@@ -39,10 +44,12 @@ class Detector():
                     cv.Rectangle(grayscale,(hs_i[0][0],hs_i[0][1]),
                         (hs_i[0][0]+hs_i[0][2],hs_i[0][1]+hs_i[0][3]),
                         cv.RGB(155, 55, 200),2)
-                    #cv.ShowImage("Camera", grayscale)
+                    self._oOutput.showCam(grayscale)
 
                 return True
-        #cv.ShowImage("Camera", grayscale)
+
+            self._oOutput.showCam(grayscale)
+
         return False
 
 
@@ -82,62 +89,36 @@ class Detector():
     def disable_cam(self):
         self._capture = None
 
-class OsHelperFactory():
-
-    @staticmethod
-    def get_os_helper():
-        if platform.system()=='Darwin':
-            return MacHelper()
-
-        if platform.system()=='Linux':
-            return LinuxOsHelper()
-        else:
-            raise Exception("Sorry, your os not implemented yet")
-
-class BaseOsHelper(object):
-
-    #блокируем компьютер
-    def lock(self):
-        raise NotImplementedError()
-
-    #проверяем, авторизован ли пользователь
-    def is_logged(self):
-        raise NotImplementedError()
-
-class LinuxOsHelper(BaseOsHelper) :
-
-    #блокируем компьютер
-    def lock(self):
-        os.system('/usr/bin/gnome-screensaver-command -l')
-
-    #проверяем, авторизован ли пользователь
-    def is_logged(self):
-        response = commands.getstatusoutput("ps ax | grep -v grep | grep gnome-screensaver | awk '{ print $1; }'")
-        return True
-
-class MacHelper(BaseOsHelper):
-    def lock(self):
-        os.system('/System/Library/CoreServices/Menu\ Extras/User.menu/Contents/Resources/CGSession -suspend')
-
-    def is_logged(self):
-        result = commands.getstatusoutput("stat -f%Su /dev/console | grep root")
-        if result[1]=='root':
-            return False
-        return True
-
 #проверяет, не пора ли залочить машину
 def is_expired(modify_time):
     return time.time()-modify_time>10
 
+class DebugOutput:
+
+    _windowName = None
+
+    def __init__(self, windowName):
+        self._windowName = windowName
+
+    def showCam( self, frame ):
+        if not debug:
+            return False
+
+        cv.ShowImage( self._windowName, frame)
+        cv.WaitKey(33)
+
 #точка входа
 if __name__ == "__main__":
-    detector = Detector();
-    os_helper = OsHelperFactory.get_os_helper()
+    detector = Detector()
+    os_helper = OsHelper.OsHelper()
     capture = detector.init_cam()
+
     if not capture:
         print "Error opening capture device"
         sys.exit(1)
-    #cv.NamedWindow("Camera",cv.CV_WINDOW_AUTOSIZE)
+
+    cv.NamedWindow("Camera",cv.CV_WINDOW_AUTOSIZE)
+
     while 1:
         #если ноут уже заблокирован - ничего не делаем
         if not os_helper.is_logged():
@@ -152,4 +133,5 @@ if __name__ == "__main__":
         if not detector.detect() and is_expired(detector.get_modify_time()):
             os_helper.lock()
             print 'lock'
+
         time.sleep(1)
