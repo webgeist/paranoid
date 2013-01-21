@@ -15,6 +15,8 @@ class OsHelper(BaseOsHelper) :
 
     # gnome
     def gnomeLock(self):
+        print 'lock'
+        return True
         os.system('/usr/bin/gnome-screensaver-command -l')
 
     # KDE
@@ -32,6 +34,22 @@ class OsHelper(BaseOsHelper) :
             'GNOME': self.gnomeLock,
             'KDE': self.kdeLock
         }.get( self._WMName, self.defaultLock )()
+
+    # разблокирует компьюетер
+    def unLock(self):
+        {
+            'Unity': self.gnomeUnLock,
+            'GNOME': self.gnomeUnLock,
+        }.get( self._WMName, self.defaultUnLock )()
+
+    #
+    def gnomeUnLock(self):
+        print 'unlock'
+        os.system('/usr/bin/gnome-screensaver-command -d')
+
+    #
+    def defaultUnLock(self):
+        raise NotImplementedError()
 
     # проверяем, авторизован ли  пользователь
     def is_logged(self):
